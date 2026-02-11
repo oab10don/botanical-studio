@@ -1,15 +1,12 @@
 import Link from "next/link";
-import Hero3D from "@/components/Hero3D";
-import { getFeaturedPlant } from "@/data/plants";
+import SplatHero from "@/components/SplatHero";
 
 export default function Home() {
-  const featured = getFeaturedPlant();
-
   return (
     <>
-      {/* ヒーローセクション */}
+      {/* ヒーローセクション - SplatViewer直接配置で動作確認 */}
       <section className="relative h-[70vh] min-h-[500px]">
-        <Hero3D model={featured.model} className="h-full w-full" priority />
+        <SplatHero url="/models/monstera.ksplat" />
 
         {/* オーバーレイテキスト */}
         <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-end pb-16">
