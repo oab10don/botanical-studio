@@ -12,7 +12,6 @@ interface SplatViewerProps {
 
 /**
  * Gaussian Splat (PLY/KSPLAT) を表示するコンポーネント
- * @mkkellogg/gaussian-splats-3d の Viewer を直接使用
  */
 export default function SplatViewer({
   url,
@@ -21,9 +20,10 @@ export default function SplatViewer({
   autoRotate = true,
   className,
 }: SplatViewerProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const autoRotateTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleInteraction = useCallback(() => {
@@ -38,18 +38,12 @@ export default function SplatViewer({
   }, []);
 
   useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
+    const container = containerRef.current;
+    if (!container) return;
 
     let disposed = false;
 
-    // React が管理しないコンテナを作成し、Viewerに渡す
-    const container = document.createElement("div");
-    container.style.width = "100%";
-    container.style.height = "100%";
-    wrapper.appendChild(container);
-
-    async function init() {
+    async function init(container: HTMLDivElement) {
       try {
         const mod = await import("@mkkellogg/gaussian-splats-3d");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,21 +51,47 @@ export default function SplatViewer({
 
         if (disposed) return;
 
-        const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
-        console.log("[SplatViewer] crossOriginIsolated:", isCOI);
-
+        // rootElement無しで生成（document.bodyにCanvasが追加される）
         const viewer = new GS3D.Viewer({
-          rootElement: container,
           useBuiltInControls: true,
           selfDrivenMode: true,
           renderMode: GS3D.RenderMode?.Always ?? 0,
           sceneRevealMode: GS3D.SceneRevealMode?.Instant ?? 2,
-          logLevel: GS3D.LogLevel?.Debug ?? 4,
+          logLevel: GS3D.LogLevel?.None ?? 0,
           gpuAcceleratedSort: true,
-          sharedMemoryForWorkers: isCOI,
+          sharedMemoryForWorkers:
+            typeof crossOriginIsolated !== "undefined" && crossOriginIsolated,
         });
 
         viewerRef.current = viewer;
+
+        // Viewerが document.body に追加した canvas を自分のコンテナに移動
+        const canvas = viewer.renderer?.domElement as
+          | HTMLCanvasElement
+          | undefined;
+        if (canvas) {
+          canvasRef.current = canvas;
+          canvas.style.position = "absolute";
+          canvas.style.top = "0";
+          canvas.style.left = "0";
+          canvas.style.width = "100%";
+          canvas.style.height = "100%";
+          container.appendChild(canvas);
+
+          // コンテナサイズに合わせてレンダラーをリサイズ
+          const rect = container.getBoundingClientRect();
+          viewer.renderer.setSize(rect.width, rect.height);
+          viewer.camera.aspect = rect.width / rect.height;
+          viewer.camera.updateProjectionMatrix();
+        }
+
+        // Viewer の loading UI 要素も移動（存在すれば）
+        const loadingUI = document.querySelector(
+          ".loader-container"
+        ) as HTMLElement | null;
+        if (loadingUI && loadingUI.parentNode === document.body) {
+          loadingUI.remove();
+        }
 
         await viewer.addSplatScene(url, {
           showLoadingUI: false,
@@ -79,11 +99,30 @@ export default function SplatViewer({
         });
 
         if (disposed) {
-          await viewer.dispose();
+          try {
+            viewer.dispose();
+          } catch {
+            /* ignore */
+          }
           return;
         }
 
         viewer.start();
+
+        // リサイズ対応
+        const ro = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const { width, height } = entry.contentRect;
+            if (width === 0 || height === 0) return;
+            viewer.renderer?.setSize(width, height);
+            if (viewer.camera) {
+              viewer.camera.aspect = width / height;
+              viewer.camera.updateProjectionMatrix();
+            }
+          }
+        });
+        ro.observe(container);
+
         onLoad?.();
 
         if (autoRotate && viewer.controls) {
@@ -96,6 +135,12 @@ export default function SplatViewer({
 
         container.addEventListener("pointerdown", handleInteraction);
         container.addEventListener("wheel", handleInteraction);
+
+        return () => {
+          ro.disconnect();
+          container.removeEventListener("pointerdown", handleInteraction);
+          container.removeEventListener("wheel", handleInteraction);
+        };
       } catch (err) {
         if (!disposed) {
           const error = err instanceof Error ? err : new Error(String(err));
@@ -105,31 +150,39 @@ export default function SplatViewer({
       }
     }
 
-    init();
+    const cleanupPromise = init(container);
 
     return () => {
       disposed = true;
       if (autoRotateTimerRef.current) clearTimeout(autoRotateTimerRef.current);
-      container.removeEventListener("pointerdown", handleInteraction);
-      container.removeEventListener("wheel", handleInteraction);
 
       const viewer = viewerRef.current;
-      if (viewer?.dispose) {
-        try { viewer.dispose(); } catch { /* ignore cleanup errors */ }
+      if (viewer) {
+        try {
+          viewer.dispose();
+        } catch {
+          /* ignore cleanup errors */
+        }
+        viewerRef.current = null;
       }
-      viewerRef.current = null;
 
-      // Viewerが管理していたコンテナごと削除
-      if (container.parentNode) {
-        container.parentNode.removeChild(container);
+      // canvas が body に残っている場合も削除
+      const canvas = canvasRef.current;
+      if (canvas?.parentNode) {
+        canvas.parentNode.removeChild(canvas);
       }
+      canvasRef.current = null;
+
+      cleanupPromise?.then((cleanup) => cleanup?.());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
   return (
-    <div className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div ref={wrapperRef} style={{ width: "100%", height: "100%" }} />
-    </div>
+    <div
+      ref={containerRef}
+      className={className}
+      style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}
+    />
   );
 }
