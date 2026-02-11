@@ -57,15 +57,18 @@ export default function SplatViewer({
 
         if (disposed) return;
 
+        const isCOI = typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
+        console.log("[SplatViewer] crossOriginIsolated:", isCOI);
+
         const viewer = new GS3D.Viewer({
           rootElement: container,
           useBuiltInControls: true,
           selfDrivenMode: true,
           renderMode: GS3D.RenderMode?.Always ?? 0,
           sceneRevealMode: GS3D.SceneRevealMode?.Instant ?? 2,
-          logLevel: GS3D.LogLevel?.None ?? 0,
+          logLevel: GS3D.LogLevel?.Debug ?? 4,
           gpuAcceleratedSort: true,
-          sharedMemoryForWorkers: true,
+          sharedMemoryForWorkers: isCOI,
         });
 
         viewerRef.current = viewer;
