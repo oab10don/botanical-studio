@@ -11,8 +11,8 @@ export const plants: Plant[] = [
     priceRange: "¥5,000 - ¥15,000",
     model: {
       type: "splat",
-      format: "ply",
-      url: "/models/monstera.ply",
+      format: "ksplat",
+      url: "/models/monstera.ksplat",
       poster: "/posters/placeholder.svg",
     },
     featured: true,
