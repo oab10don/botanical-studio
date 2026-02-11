@@ -21,7 +21,7 @@ export default function SplatViewer({
   autoRotate = true,
   className,
 }: SplatViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null);
   const autoRotateTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -31,30 +31,25 @@ export default function SplatViewer({
       clearTimeout(autoRotateTimerRef.current);
       autoRotateTimerRef.current = undefined;
     }
-    // 自動回転を止める
     const viewer = viewerRef.current;
     if (viewer?.controls) {
       viewer.controls.autoRotate = false;
     }
   }, []);
 
-  const handleReset = useCallback(() => {
-    // ページリロードでリセット（viewer のカメラ初期位置はviewer内部が管理）
-    const viewer = viewerRef.current;
-    if (!viewer) return;
-    // controls.reset() があれば使う
-    if (viewer.controls?.reset) {
-      viewer.controls.reset();
-    }
-  }, []);
-
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
 
     let disposed = false;
 
-    async function init(container: HTMLDivElement) {
+    // React が管理しないコンテナを作成し、Viewerに渡す
+    const container = document.createElement("div");
+    container.style.width = "100%";
+    container.style.height = "100%";
+    wrapper.appendChild(container);
+
+    async function init() {
       try {
         const mod = await import("@mkkellogg/gaussian-splats-3d");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,7 +57,6 @@ export default function SplatViewer({
 
         if (disposed) return;
 
-        // Viewerに全てを任せる（Scene, Renderer, Camera を自動管理）
         const viewer = new GS3D.Viewer({
           rootElement: container,
           useBuiltInControls: true,
@@ -89,19 +83,14 @@ export default function SplatViewer({
         viewer.start();
         onLoad?.();
 
-        // 自動回転
         if (autoRotate && viewer.controls) {
           viewer.controls.autoRotate = true;
           viewer.controls.autoRotateSpeed = 0.5;
-
           autoRotateTimerRef.current = setTimeout(() => {
-            if (viewer.controls) {
-              viewer.controls.autoRotate = false;
-            }
+            if (viewer.controls) viewer.controls.autoRotate = false;
           }, 3000);
         }
 
-        // ユーザーインタラクション検出
         container.addEventListener("pointerdown", handleInteraction);
         container.addEventListener("wheel", handleInteraction);
       } catch (err) {
@@ -113,47 +102,31 @@ export default function SplatViewer({
       }
     }
 
-    init(container);
+    init();
 
     return () => {
       disposed = true;
-      if (autoRotateTimerRef.current) {
-        clearTimeout(autoRotateTimerRef.current);
-      }
+      if (autoRotateTimerRef.current) clearTimeout(autoRotateTimerRef.current);
       container.removeEventListener("pointerdown", handleInteraction);
       container.removeEventListener("wheel", handleInteraction);
 
       const viewer = viewerRef.current;
       if (viewer?.dispose) {
-        viewer.dispose();
+        try { viewer.dispose(); } catch { /* ignore cleanup errors */ }
       }
       viewerRef.current = null;
+
+      // Viewerが管理していたコンテナごと削除
+      if (container.parentNode) {
+        container.parentNode.removeChild(container);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
   return (
     <div className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
-      <button
-        onClick={handleReset}
-        aria-label="カメラ位置をリセット"
-        className="absolute bottom-4 right-4 z-10 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition-colors"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M3 12a9 9 0 1 1 3.26-6.92" />
-          <path d="M3 2v5h5" />
-        </svg>
-      </button>
+      <div ref={wrapperRef} style={{ width: "100%", height: "100%" }} />
     </div>
   );
 }

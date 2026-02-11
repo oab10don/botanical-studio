@@ -12,7 +12,7 @@ const MeshViewer = dynamic(() => import("./MeshViewer"), { ssr: false });
 
 type ViewerState = "poster" | "loading" | "ready" | "error";
 
-const LOAD_TIMEOUT_MS = 8000;
+const LOAD_TIMEOUT_MS = 15000;
 
 interface Hero3DProps {
   model: PlantModel;
