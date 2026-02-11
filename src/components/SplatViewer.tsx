@@ -23,7 +23,7 @@ export default function SplatViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const viewerElRef = useRef<HTMLDivElement | null>(null);
   const autoRotateTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleInteraction = useCallback(() => {
@@ -43,6 +43,20 @@ export default function SplatViewer({
 
     let disposed = false;
 
+    // コンテナの実ピクセルサイズを取得
+    const rect = container.getBoundingClientRect();
+
+    // 非React管理の子divを明示的ピクセルサイズで作成
+    // ライブラリは rootElement.offsetWidth/offsetHeight でサイズ取得するため
+    const viewerEl = document.createElement("div");
+    viewerEl.style.width = rect.width + "px";
+    viewerEl.style.height = rect.height + "px";
+    container.appendChild(viewerEl);
+    viewerElRef.current = viewerEl;
+
+    console.log("[SplatViewer] container:", rect.width, "x", rect.height);
+    console.log("[SplatViewer] viewerEl offset:", viewerEl.offsetWidth, "x", viewerEl.offsetHeight);
+
     async function init(container: HTMLDivElement) {
       try {
         const mod = await import("@mkkellogg/gaussian-splats-3d");
@@ -51,8 +65,8 @@ export default function SplatViewer({
 
         if (disposed) return;
 
-        // rootElement無しで生成（document.bodyにCanvasが追加される）
         const viewer = new GS3D.Viewer({
+          rootElement: viewerEl,
           useBuiltInControls: true,
           selfDrivenMode: true,
           renderMode: GS3D.RenderMode?.Always ?? 0,
@@ -65,33 +79,15 @@ export default function SplatViewer({
 
         viewerRef.current = viewer;
 
-        // Viewerが document.body に追加した canvas を自分のコンテナに移動
-        const canvas = viewer.renderer?.domElement as
-          | HTMLCanvasElement
-          | undefined;
-        if (canvas) {
-          canvasRef.current = canvas;
-          canvas.style.position = "absolute";
-          canvas.style.top = "0";
-          canvas.style.left = "0";
-          canvas.style.width = "100%";
-          canvas.style.height = "100%";
-          container.appendChild(canvas);
+        // canvas サイズ確認
+        const canvas = viewerEl.querySelector("canvas");
+        console.log("[SplatViewer] canvas:", canvas?.width, "x", canvas?.height);
 
-          // コンテナサイズに合わせてレンダラーをリサイズ
-          const rect = container.getBoundingClientRect();
-          viewer.renderer.setSize(rect.width, rect.height);
-          viewer.camera.aspect = rect.width / rect.height;
-          viewer.camera.updateProjectionMatrix();
-        }
-
-        // Viewer の loading UI 要素も移動（存在すれば）
+        // ライブラリが body に追加する loading UI を削除
         const loadingUI = document.querySelector(
           ".loader-container"
         ) as HTMLElement | null;
-        if (loadingUI && loadingUI.parentNode === document.body) {
-          loadingUI.remove();
-        }
+        if (loadingUI) loadingUI.remove();
 
         await viewer.addSplatScene(url, {
           showLoadingUI: false,
@@ -109,19 +105,11 @@ export default function SplatViewer({
 
         viewer.start();
 
-        // リサイズ対応
-        const ro = new ResizeObserver((entries) => {
-          for (const entry of entries) {
-            const { width, height } = entry.contentRect;
-            if (width === 0 || height === 0) return;
-            viewer.renderer?.setSize(width, height);
-            if (viewer.camera) {
-              viewer.camera.aspect = width / height;
-              viewer.camera.updateProjectionMatrix();
-            }
-          }
-        });
-        ro.observe(container);
+        // カメラ位置を確認
+        if (viewer.camera) {
+          const p = viewer.camera.position;
+          console.log("[SplatViewer] camera:", p.x.toFixed(2), p.y.toFixed(2), p.z.toFixed(2));
+        }
 
         onLoad?.();
 
@@ -135,45 +123,52 @@ export default function SplatViewer({
 
         container.addEventListener("pointerdown", handleInteraction);
         container.addEventListener("wheel", handleInteraction);
-
-        return () => {
-          ro.disconnect();
-          container.removeEventListener("pointerdown", handleInteraction);
-          container.removeEventListener("wheel", handleInteraction);
-        };
       } catch (err) {
         if (!disposed) {
           const error = err instanceof Error ? err : new Error(String(err));
-          console.error("[SplatViewer] Load error:", error);
+          console.error("[SplatViewer] error:", error);
           onError?.(error);
         }
       }
     }
 
-    const cleanupPromise = init(container);
+    init(container);
+
+    // コンテナリサイズ → viewerEl サイズ更新（ライブラリの ResizeObserver が検知）
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width === 0 || height === 0) return;
+        viewerEl.style.width = width + "px";
+        viewerEl.style.height = height + "px";
+      }
+    });
+    ro.observe(container);
 
     return () => {
       disposed = true;
+      ro.disconnect();
       if (autoRotateTimerRef.current) clearTimeout(autoRotateTimerRef.current);
+      container.removeEventListener("pointerdown", handleInteraction);
+      container.removeEventListener("wheel", handleInteraction);
 
       const viewer = viewerRef.current;
       if (viewer) {
+        // dispose() は内部で document.body.removeChild(rootElement) を実行するが、
+        // viewerEl は body の子ではないためエラーになる → try/catch で無視
         try {
           viewer.dispose();
         } catch {
-          /* ignore cleanup errors */
+          /* ignore: library assumes rootElement is child of body */
         }
         viewerRef.current = null;
       }
 
-      // canvas が body に残っている場合も削除
-      const canvas = canvasRef.current;
-      if (canvas?.parentNode) {
-        canvas.parentNode.removeChild(canvas);
+      // viewerEl を手動で削除
+      if (viewerEl.parentNode) {
+        viewerEl.parentNode.removeChild(viewerEl);
       }
-      canvasRef.current = null;
-
-      cleanupPromise?.then((cleanup) => cleanup?.());
+      viewerElRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
