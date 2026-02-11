@@ -1,5 +1,72 @@
 import { Plant } from "@/types/plant";
 
+/** カード表示用の植物データ */
+export interface PlantCard {
+  name: string;
+  tagline: string;
+  description: string;
+  modelUrl: string;
+}
+
+export const plantCards: PlantCard[] = [
+  {
+    name: "エバーフレッシュ S",
+    tagline: "小さくても存在感あり",
+    description:
+      "コンパクトなSサイズのエバーフレッシュ。デスクや棚の上にちょうど良いサイズ感で、繊細な葉が揺れる姿に癒されます。夜になると葉を閉じる「就眠運動」も楽しめます。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ M",
+    tagline: "リビングに映える人気サイズ",
+    description:
+      "もっとも人気のあるMサイズ。リビングや寝室の窓際に置くと、光を透かした葉がとても美しく映えます。成長が早いので、育てる楽しさも実感しやすいサイズです。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ L",
+    tagline: "空間の主役になる一本",
+    description:
+      "存在感のあるLサイズ。広めのリビングやオフィスのエントランスにおすすめです。風に揺れる繊細な葉と、しっかりとした幹のコントラストが魅力的です。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ 曲がり仕立て",
+    tagline: "個性的なシルエット",
+    description:
+      "幹を曲げて仕立てた一点もの。自然な曲線が空間にやわらかな表情を加えます。同じ形は二つとないので、お気に入りの一本を見つける楽しみがあります。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ 朴仕立て",
+    tagline: "ワイルドな幹が魅力",
+    description:
+      "太い朴（ぼく）から新芽を吹かせた力強い仕立て。和モダンやナチュラルテイストのインテリアと相性抜群。丈夫で管理しやすく、長く楽しめます。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ テラコッタ鉢セット",
+    tagline: "届いてすぐ飾れる",
+    description:
+      "素焼きのテラコッタ鉢とセットでお届け。鉢選びの手間なく、届いたその日からインテリアに馴染みます。受け皿付きで床も安心です。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ セメント鉢セット",
+    tagline: "モダンな鉢との組み合わせ",
+    description:
+      "無機質なセメント鉢がエバーフレッシュの繊細な葉を引き立てます。モダンインテリアやモノトーンの空間によく合うスタイリッシュな組み合わせです。",
+    modelUrl: "/models/plant.spz",
+  },
+  {
+    name: "エバーフレッシュ ギフトセット",
+    tagline: "贈り物に最適",
+    description:
+      "ラッピング・メッセージカード付きのギフトセット。引越し祝いや開店祝いに人気です。育て方ガイドも同封するので、植物初心者の方への贈り物にも安心です。",
+    modelUrl: "/models/plant.spz",
+  },
+];
+
 export const plants: Plant[] = [
   {
     slug: "monstera-deliciosa",

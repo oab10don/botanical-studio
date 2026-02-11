@@ -1,5 +1,4 @@
-import PlantCard from "@/components/PlantCard";
-import { plants } from "@/data/plants";
+import PlantGrid from "@/components/PlantGrid";
 
 export const metadata = {
   title: "Plants | Botanical Studio",
@@ -15,12 +14,7 @@ export default function PlantsPage() {
       <p className="mt-2 text-center text-sm text-gray-400">
         植物を選んで、3Dで体験してみましょう
       </p>
-
-      <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-3 lg:gap-6">
-        {plants.map((plant) => (
-          <PlantCard key={plant.slug} plant={plant} />
-        ))}
-      </div>
+      <PlantGrid />
     </div>
   );
 }

@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false,
   transpilePackages: ["three"],
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "picsum.photos" },
+    ],
+  },
   turbopack: {
     root: __dirname,
   },

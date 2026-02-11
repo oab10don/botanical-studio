@@ -1,23 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 /**
- * 3D操作のヒントを一時表示するコンポーネント
- * 3秒表示後にフェードアウト
+ * 3D操作のヒントを表示するコンポーネント
+ * ユーザーがドラッグ操作をするまで表示し続ける
  */
 export default function InteractionHint() {
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
 
+  const handleInteraction = useCallback(() => {
+    if (!fading) {
+      setFading(true);
+      setTimeout(() => setVisible(false), 1000);
+    }
+  }, [fading]);
+
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setFading(true), 2500);
-    const hideTimer = setTimeout(() => setVisible(false), 3500);
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(hideTimer);
+    const onPointerMove = (e: PointerEvent) => {
+      // ドラッグ中（ボタン押下状態での移動）のみ反応
+      if (e.buttons > 0) {
+        handleInteraction();
+      }
     };
-  }, []);
+    const onTouchMove = () => {
+      handleInteraction();
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("touchmove", onTouchMove);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("touchmove", onTouchMove);
+    };
+  }, [handleInteraction]);
 
   if (!visible) return null;
 
@@ -39,7 +56,7 @@ export default function InteractionHint() {
         <path d="M18 12V8a2 2 0 0 0-4 0v4" />
         <path d="M22 12v1a10 10 0 0 1-20 0v-1a2 2 0 0 1 4 0v0a2 2 0 0 0 4 0V6a2 2 0 0 1 4 0v6" />
       </svg>
-      <span>ドラッグで回転 / ピンチで拡大</span>
+      <span>ドラッグで回転できます</span>
     </div>
   );
 }

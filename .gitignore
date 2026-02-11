@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files
+/test-results
+
+# large test models
+public/models/bonsai-test.ksplat

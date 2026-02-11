@@ -1,44 +1,45 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Plant } from "@/types/plant";
+"use client";
+
+import { PlantCard as PlantCardData } from "@/data/plants";
 
 interface PlantCardProps {
-  plant: Plant;
+  plant: PlantCardData;
+  onSelect: (plant: PlantCardData) => void;
 }
 
 /**
  * 植物一覧用のカードコンポーネント
+ * クリックで詳細ポップアップを表示
  */
-export default function PlantCard({ plant }: PlantCardProps) {
+export default function PlantCard({ plant, onSelect }: PlantCardProps) {
   return (
-    <Link
-      href={`/plants/${plant.slug}`}
-      className="group block overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow hover:shadow-md"
+    <button
+      type="button"
+      onClick={() => onSelect(plant)}
+      className="w-full overflow-hidden rounded-2xl bg-white text-left shadow-sm transition-shadow hover:shadow-md"
     >
-      <div className="relative aspect-square overflow-hidden bg-[#f5f7f3]">
-        <Image
-          src={plant.model.poster}
-          alt={plant.name}
-          fill
-          className="object-contain transition-transform duration-500 group-hover:scale-105"
-          sizes="(max-width: 768px) 50vw, 33vw"
-        />
+      {/* プレースホルダー画像エリア（植物アイコン） */}
+      <div className="relative flex aspect-[4/3] items-center justify-center bg-[#e8f0e4]">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#5a7a50"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M7 20h10" />
+          <path d="M12 20v-8" />
+          <path d="M12 12C12 8 8 4 4 4c0 4 4 8 8 8z" />
+          <path d="M12 12c0-4 4-8 8-8-4 0-8 4-8 8z" />
+        </svg>
       </div>
       <div className="p-4">
         <h3 className="text-sm font-medium text-[#2d2d2d]">{plant.name}</h3>
-        <p className="mt-0.5 text-xs text-gray-400">{plant.nameEn}</p>
-        <p className="mt-2 text-sm text-[#5a7a50]">{plant.priceRange}</p>
-        <div className="mt-2 flex flex-wrap gap-1">
-          {plant.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-[#e8f0e4] px-2 py-0.5 text-[10px] text-[#5a7a50]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+        <p className="mt-0.5 text-xs text-gray-400">{plant.tagline}</p>
       </div>
-    </Link>
+    </button>
   );
 }
