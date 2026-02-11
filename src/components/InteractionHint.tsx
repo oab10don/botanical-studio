@@ -40,7 +40,7 @@ export default function InteractionHint() {
 
   return (
     <div
-      className={`pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-black/50 px-5 py-2.5 text-sm text-white backdrop-blur-sm transition-opacity duration-1000 ${
+      className={`pointer-events-none absolute bottom-8 left-1/2 z-[10] -translate-x-1/2 flex items-center gap-3 rounded-full bg-black/50 px-5 py-2.5 text-sm text-white backdrop-blur-sm transition-opacity duration-1000 ${
         fading ? "opacity-0" : "opacity-100"
       }`}
     >
