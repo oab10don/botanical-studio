@@ -60,11 +60,18 @@ export default function SplatViewer({
 
     async function init(container: HTMLDivElement) {
       try {
-        const GaussianSplats3D = await import(
-          "@mkkellogg/gaussian-splats-3d"
-        );
+        // ESM dynamic import - handle both default and named exports
+        const mod = await import("@mkkellogg/gaussian-splats-3d");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const GS3D = (mod as any).default ?? mod;
+
+        console.log("[SplatViewer] Module loaded, Viewer:", typeof GS3D.Viewer);
 
         if (disposed) return;
+
+        if (!GS3D.Viewer) {
+          throw new Error("GaussianSplats3D.Viewer not found in module");
+        }
 
         const scene = new THREE.Scene();
         sceneRef.current = scene;
@@ -84,24 +91,30 @@ export default function SplatViewer({
         camera.position.set(0, 1, 5);
         initialCameraPositionRef.current.copy(camera.position);
 
-        const viewer = new GaussianSplats3D.Viewer({
+        console.log("[SplatViewer] Creating viewer...");
+
+        const viewer = new GS3D.Viewer({
           threeScene: scene,
           renderer,
           camera,
           useBuiltInControls: true,
           selfDrivenMode: true,
-          renderMode: GaussianSplats3D.RenderMode.Always,
-          sceneRevealMode: GaussianSplats3D.SceneRevealMode.Gradual,
-          logLevel: GaussianSplats3D.LogLevel.None,
+          renderMode: GS3D.RenderMode?.Always ?? 0,
+          sceneRevealMode: GS3D.SceneRevealMode?.Gradual ?? 1,
+          logLevel: GS3D.LogLevel?.None ?? 0,
           gpuAcceleratedSort: true,
         });
 
         viewerRef.current = viewer;
 
+        console.log("[SplatViewer] Loading scene:", url);
+
         await viewer.addSplatScene(url, {
           showLoadingUI: false,
           splatAlphaRemovalThreshold: 5,
         });
+
+        console.log("[SplatViewer] Scene loaded successfully");
 
         if (disposed) {
           await viewer.dispose();
@@ -110,6 +123,8 @@ export default function SplatViewer({
 
         viewer.start();
         onLoad?.();
+
+        console.log("[SplatViewer] Started, onLoad called");
 
         // 自動回転: 3秒間だけ低速で回転
         if (autoRotate && viewer.controls) {
